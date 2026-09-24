@@ -1,0 +1,31 @@
+[build]
+# Replace with your specific Cortex-M target
+target = "thumbv7em-none-eabihf"
+
+[target.thumbv7em-none-eabihf]
+# This tells the cc crate and cargo to use the ARM linker/compiler
+linker = "arm-none-eabi-gcc"
+# runner = "gdb -q -x openocd.gdb" # Optional: for debugging
+rustflags = [
+	# match the Rust target's hard-float ABI so gcc picks the right multilib
+	"-C",
+	"link-arg=-mcpu=cortex-m7",
+	"-C",
+	"link-arg=-mthumb",
+	"-C",
+	"link-arg=-mfpu=fpv5-d16",
+	"-C",
+	"link-arg=-mfloat-abi=hard",
+	# don't pull in gcc's crt0.o (it's what references __libc_init_array)
+	"-C",
+	"link-arg=-nostartfiles",
+	# the C HAL/FreeRTOS code still needs libc/libm
+	"-C",
+	"link-arg=--specs=nano.specs",
+	"-C",
+	"link-arg=-lc",
+	"-C",
+	"link-arg=-lm",
+	"-C",
+	"link-arg=-lgcc",
+]

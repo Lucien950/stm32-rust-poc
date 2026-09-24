@@ -85,6 +85,7 @@ fn main() {
     let mut bindings_builder = bindgen::Builder::default()
         .header("src/wrapper.h")
         .use_core() // Important for #![no_std] environments
+        .rust_edition(bindgen::RustEdition::Edition2024) // emit `unsafe extern` blocks
         .clang_arg("--target=thumbv7em-none-eabihf")
         .clang_arg("-mcpu=cortex-m7")
         .clang_arg("-mfloat-abi=hard")

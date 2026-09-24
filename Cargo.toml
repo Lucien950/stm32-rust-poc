@@ -15,7 +15,7 @@ panic-halt = "0.2"
 
 [build-dependencies]
 cc = "1.0"       # To compile the C code
-bindgen = "0.69" # To generate Rust FFI bindings from C headers
+bindgen = "0.72" # To generate Rust FFI bindings from C headers
 
 # Recommended optimization settings for embedded projects
 [profile.release]

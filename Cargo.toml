@@ -1,12 +1,16 @@
 [package]
-name = "VC"
+name = "Hexray-VC"
 version = "0.1.0"
 edition = "2024"
 build = "build/main.rs"
 
+[[bin]]
+name = "VC"
+path = "src/main.rs"
+test = false
+bench = false
+
 [dependencies]
-# cortex-m = "0.7"
-# cortex-m-rt = "0.7"
 panic-halt = "0.2"
 
 [build-dependencies]

@@ -1,11 +1,5 @@
 #![cfg_attr(not(test), no_std)]
 #![no_main]
-
-// use cortex_m_rt::entry;
-// use panic_halt as _;
-// use stm32h7xx_hal::{pac, prelude::*};
-// #[entry]
-
 use core::panic::PanicInfo;
 
 // Your custom panic handler for a bare-metal target

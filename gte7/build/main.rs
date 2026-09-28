@@ -4,7 +4,7 @@ use std::path::Path;
 use std::path::PathBuf;
 mod fetch;
 
-static SHARED_COMPILER_FLAGS: [&str; 1] = [""];
+static _SHARED_COMPILER_FLAGS: [&str; 1] = [""];
 
 static SHARED_LINKER_ARGS: [&str; 11] = [
     "-Wl,-gc-sections,--print-memory-usage",
@@ -98,8 +98,12 @@ fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>) {
         .trim()
         .to_string();
 
+    let wrapper_header = PathBuf::from("./vc/src/wrapper.h")
+        .into_os_string()
+        .into_string()
+        .unwrap();
     let mut bindings_builder = bindgen::Builder::default()
-        .header("./vc/src/wrapper.h")
+        .header(&wrapper_header)
         .use_core() // Important for #![no_std] environments
         .rust_edition(bindgen::RustEdition::Edition2024) // emit `unsafe extern` blocks
         .clang_arg("--target=thumbv7em-none-eabihf")
@@ -107,6 +111,7 @@ fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>) {
         .clang_arg("-mfloat-abi=hard")
         .clang_arg(format!("--sysroot={sysroot}"))
         .clang_arg(format!("-isystem{sysroot}/include"));
+    println!("cargo::rerun-if-changed={}", &wrapper_header);
     for (name, value) in &stm32_hal_defines {
         bindings_builder = match value {
             Some(v) => bindings_builder.clang_arg(format!("-D{name}={v}")),

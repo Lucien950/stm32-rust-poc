@@ -1,6 +1,5 @@
 use std::env;
 use std::fs;
-use std::path::Path;
 use std::path::PathBuf;
 
 use cargo_utils::paths::{LinkerPaths, h7_linker_paths, linker_path};
@@ -178,6 +177,7 @@ fn main() {
             "stm32h7xx_hal_gpio.c",
             "stm32h7xx_hal_iwdg.c",
         ],
+        &PathBuf::from("./src"),
     );
 
     let linker_paths: LinkerPaths = h7_linker_paths();

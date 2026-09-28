@@ -1,0 +1,18 @@
+[package]
+name = "vc"
+version = "0.1.0"
+edition = "2024"
+
+# [[bin]]
+# name = "gte7_VC_app"
+# path = "vc/src/main.rs"
+# test = false
+# bench = false
+
+[dependencies]
+panic-halt = "0.2"
+
+[build-dependencies]
+cargo-utils = { path = "../../cargo-utils" }
+cc = "1.0"
+bindgen = "0.72"

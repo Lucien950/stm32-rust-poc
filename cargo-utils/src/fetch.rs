@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -40,5 +41,5 @@ pub fn fetch_hal_repo(url: &str, out_dir: &PathBuf, repo_name: &str) -> PathBuf 
             .status();
     }
 
-    repo_path
+    fs::canonicalize(repo_path).unwrap()
 }

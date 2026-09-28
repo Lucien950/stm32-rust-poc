@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
+members = ["cargo-utils", "gte7/vc", "shared", "tests"]
 resolver = "3"
-members = ["gte7", "shared", "tests"]
 
 [profile.release]
 lto = true # Link-time optimization (reduces binary size)

@@ -3,8 +3,8 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
-use cargo_utils::pull_deps::DepsInfo;
-use cargo_utils::pull_deps::pull_dependencies;
+use cargo_utils::paths::{LinkerPaths, h7_linker_paths, linker_path};
+use cargo_utils::pull_deps::pull_h7_dependencies;
 
 static _SHARED_COMPILER_FLAGS: [&str; 1] = [""];
 
@@ -26,12 +26,12 @@ static SHARED_LINKER_ARGS: [&str; 11] = [
     "-static",
 ];
 
-fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>) {
+fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>, src_path: &PathBuf) {
     // modify main.c
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let original_main_path = "src/cubemx/Src/main.c";
     let modified_main_path = out_dir.join("modified_main.c");
-    let mut main_c_content = fs::read_to_string(original_main_path).expect("Failed to read main.c");
+    let mut main_c_content =
+        fs::read_to_string("./src/cubemx/Src/main.c").expect("Failed to read main.c");
     main_c_content = main_c_content.replace("int main(void)", "void cube_setup(void)");
     main_c_content = main_c_content.replace("while (1)", "while (0)");
     fs::write(&modified_main_path, main_c_content).expect("Failed to write modified_main.c");
@@ -43,7 +43,7 @@ fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>) {
         hal_path.join("Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM7/r0p1"),
         hal_path.join("Drivers/CMSIS/Device/ST/STM32H7xx/Include"),
         hal_path.join("Drivers/CMSIS/Include"),
-        PathBuf::from("src/cubemx/Inc"),
+        src_path.join("cubemx/Inc"),
         PathBuf::from("../../third_party/freertos_config"),
     ];
     let stm32_hal_defines: [(&str, Option<&str>); 2] =
@@ -62,9 +62,9 @@ fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>) {
     }
 
     builder.file(modified_main_path);
-    let path = Path::new("src/cubemx/Src");
-    assert!(path.is_dir());
-    for entry in fs::read_dir(path).expect("Failed to read directory") {
+    let cubemx_src_path = src_path.join("cubemx/Src");
+    assert!(cubemx_src_path.is_dir());
+    for entry in fs::read_dir(cubemx_src_path).expect("Failed to read directory") {
         let entry = entry.expect("Failed to read entry");
         let file_path = entry.path();
         if file_path.is_file() && file_path.extension().is_some_and(|ext| ext == "c") {
@@ -134,12 +134,16 @@ fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>) {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
+
+    println!("cargo::rustc-link-arg=-Wl,--undefined=Reset_Handler"); // nothing (linkerscript??) references the startup code, so force ld to pull it out of libstm32cube.a 
 }
 
-fn build_vc(d: DepsInfo) {
-    // build VC
+fn main() {
+    let d = pull_h7_dependencies();
+    // println!("{:?}", d);
+
     build_stm_lib(
-        &d.h7_hal_path,
+        &d,
         vec![
             "stm32h7xx_ll_usb.c",
             "stm32h7xx_ll_fmc.c",
@@ -176,23 +180,16 @@ fn build_vc(d: DepsInfo) {
         ],
     );
 
+    let linker_paths: LinkerPaths = h7_linker_paths();
+
     println!(
         "cargo::rustc-link-arg=-Wl,-T,{}",
-        &d.h7_app_linker_script.to_string_lossy().into_owned()
+        &linker_paths.app_linker_script.display()
     );
-    println!("cargo::rustc-link-arg=-Wl,--undefined=Reset_Handler"); // nothing (linkerscript??) references the startup code, so force ld to pull it out of libstm32cube.a 
     // shared linker args
     for arg in SHARED_LINKER_ARGS {
         println!("cargo::rustc-link-arg={arg}");
     }
-}
-
-fn build_gte7(d: DepsInfo) {
-    build_vc(d);
-}
-
-fn main() {
-    let d: DepsInfo = pull_dependencies();
-    println!("{:?}", d);
-    build_gte7(d);
+    println!("cargo::rustc-link-search={}", linker_path().display());
+    println!("cargo::rustc-link-arg=-Wl,--fatal-warnings");
 }

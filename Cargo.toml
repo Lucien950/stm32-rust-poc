@@ -6,11 +6,3 @@ edition = "2024"
 [workspace]
 members = ["cargo-utils", "gte7/vc", "shared", "tests"]
 resolver = "3"
-
-[profile.release]
-lto = true # Link-time optimization (reduces binary size)
-
-[profile.release.package.gte7]
-codegen-units = 1 # Better optimizations
-opt-level = "z"   # Optimize for size
-debug = true      # Keep debug symbols for flashing/debugging

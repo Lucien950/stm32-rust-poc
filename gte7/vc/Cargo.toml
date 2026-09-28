@@ -16,3 +16,9 @@ panic-halt = "0.2"
 cargo-utils = { path = "../../cargo-utils" }
 cc = "1.0"
 bindgen = "0.72"
+
+[profile.release]
+lto = true        # Link-time optimization (reduces binary size)
+codegen-units = 1 # Better optimizations
+opt-level = "z"   # Optimize for size
+debug = true      # Keep debug symbols for flashing/debugging

@@ -11,7 +11,7 @@ fn panic(_info: &PanicInfo) -> ! {
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 pub mod stm32_bindings {
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+    include!("bindings.rs");
 }
 
 use stm32_bindings::cube_setup;
@@ -24,7 +24,6 @@ extern "C" fn main() {
     todo!("handoff to freertos (noreturn)");
 }
 
+// newlib's __libc_init_array calls _init, normally provided by crti.o which -nostartfiles drops
 #[unsafe(no_mangle)]
-extern "C" fn exit() {
-    todo!("handoff to freertos (noreturn)")
-}
+extern "C" fn _init() {}

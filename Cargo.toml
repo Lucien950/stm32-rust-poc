@@ -1,25 +1,16 @@
 [package]
-name = "Hexray-VC"
+name = "Consolidated-Firmware"
 version = "0.1.0"
 edition = "2024"
-build = "build/main.rs"
 
-[[bin]]
-name = "VC"
-path = "src/main.rs"
-test = false
-bench = false
+[workspace]
+resolver = "3"
+members = ["gte7", "shared", "tests"]
 
-[dependencies]
-panic-halt = "0.2"
-
-[build-dependencies]
-cc = "1.0"       # To compile the C code
-bindgen = "0.72" # To generate Rust FFI bindings from C headers
-
-# Recommended optimization settings for embedded projects
 [profile.release]
+lto = true # Link-time optimization (reduces binary size)
+
+[profile.release.package.gte7]
 codegen-units = 1 # Better optimizations
-lto = true        # Link-time optimization (reduces binary size)
 opt-level = "z"   # Optimize for size
 debug = true      # Keep debug symbols for flashing/debugging

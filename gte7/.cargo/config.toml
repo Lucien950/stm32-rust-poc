@@ -1,0 +1,8 @@
+[build]
+# Replace with your specific Cortex-M target
+target = "thumbv7em-none-eabihf"
+
+[target.thumbv7em-none-eabihf]
+# This tells the cc crate and cargo to use the ARM linker/compiler
+linker = "arm-none-eabi-gcc"
+# runner = "gdb -q -x openocd.gdb" # Optional: for debugging

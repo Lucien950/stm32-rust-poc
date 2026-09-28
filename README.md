@@ -4,3 +4,5 @@ Make sure to run
 rustup target install thumbv7em-none-eabihf
 ```
 I think you also need to have arm toolchain 15.3.rel1
+
+Pretend this is inside the firmware folder

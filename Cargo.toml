@@ -4,5 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = ["cargo-utils", "gte7", "shared", "tests"]
+members = [
+	"cargo-utils",
+	"gte7",
+	"shared",
+	"tests",
+	"third_party/FreeRTOS",
+	"third_party/SystemView",
+]
 resolver = "3"

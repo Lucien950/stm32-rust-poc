@@ -19,7 +19,7 @@ pub fn build_stmh7_lib(
     main_c_content = main_c_content.replace("while (1)", "while (0)");
     fs::write(&modified_main_path, main_c_content).expect("Failed to write modified_main.c");
 
-    let stm32_hal_includes: [PathBuf; 8] = [
+    let stm32_hal_includes: [PathBuf; _] = [
         hal_path.join("Drivers/STM32H7xx_HAL_Driver/Inc"),
         hal_path.join("Middlewares/Third_Party/FreeRTOS/Source/include"),
         hal_path.join("Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2"),
@@ -27,7 +27,6 @@ pub fn build_stmh7_lib(
         hal_path.join("Drivers/CMSIS/Device/ST/STM32H7xx/Include"),
         hal_path.join("Drivers/CMSIS/Include"),
         src_path.join("cubemx/Inc"),
-        PathBuf::from("../third_party/freertos_config"),
     ];
     let stm32_hal_defines: [(&str, Option<&str>); 2] =
         [("USE_HAL_DRIVER", None), ("STM32H733xx", None)];
@@ -77,10 +76,6 @@ pub fn build_stmh7_lib(
     println!(
         "cargo::rerun-if-changed={}",
         src_path.join("cubemx").display()
-    );
-    println!(
-        "cargo::rerun-if-changed={}",
-        stm32_hal_includes[7].display()
     );
 
     // VERY IMPORTANT, MAKE SURE YOU ARE LINKING ONLY TO THE BINARIES YOU CARE ABOUT

@@ -61,20 +61,32 @@ pub fn build_stmh7_lib(
 
     let hal_src_path = hal_path.join("Drivers/STM32H7xx_HAL_Driver/Src");
     for src in hal_srcs {
-        builder.file(hal_src_path.join(src));
+        let file_path = hal_src_path.join(src);
+        println!("cargo::rerun-if-changed={}", file_path.display());
+        builder.file(file_path);
     }
 
     // include the startup script
-    builder.file(
-        hal_path
-            .join("Drivers/CMSIS/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h733xx.s"),
+    let startup_path = hal_path
+        .join("Drivers/CMSIS/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h733xx.s");
+    println!("cargo::rerun-if-changed={}", startup_path.display());
+    builder.file(startup_path);
+
+    // watch inputs only: directories are scanned recursively. never watch the objects we
+    // produce, they're rewritten every run so the build script would always be dirty
+    println!(
+        "cargo::rerun-if-changed={}",
+        src_path.join("cubemx").display()
+    );
+    println!(
+        "cargo::rerun-if-changed={}",
+        stm32_hal_includes[7].display()
     );
 
     // VERY IMPORTANT, MAKE SURE YOU ARE LINKING ONLY TO THE BINARIES YOU CARE ABOUT
     let objs = builder.flag("-ffunction-sections").compile_intermediates(); // Vec<PathBuf>, no archive, no cargo metadata
     for obj in &objs {
         println!("cargo:rustc-link-arg-bin={}={}", bin_name, obj.display());
-        println!("cargo:rerun-if-changed={}", obj.display());
     }
 
     // bindgen uses libclang, which doesn't know where the ARM toolchain's newlib headers

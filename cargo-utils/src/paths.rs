@@ -1,12 +1,13 @@
 use std::{fs, path::PathBuf};
 
 pub fn deps_path() -> PathBuf {
-    PathBuf::from("../../deps")
+    // TODO convert to use absolute root paths
+    PathBuf::from("../deps")
 }
 
 pub fn linker_path() -> PathBuf {
-    fs::canonicalize(PathBuf::from("../../linker"))
-        .expect("Linker dir should be present in Git Repo")
+    // TODO convert to use absolute root paths
+    fs::canonicalize(PathBuf::from("../linker")).expect("Linker dir should be present in Git Repo")
 }
 
 pub struct LinkerPaths {

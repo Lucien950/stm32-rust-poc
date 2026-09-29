@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = ["cargo-utils", "gte7/vc", "shared", "tests"]
+members = ["cargo-utils", "gte7", "shared", "tests"]
 resolver = "3"

@@ -1,36 +1,20 @@
-use std::env;
-use std::fs;
-use std::path::PathBuf;
+use std::{env, fs, path::PathBuf};
 
-use cargo_utils::paths::{LinkerPaths, h7_linker_paths, linker_path};
-use cargo_utils::pull_deps::pull_h7_dependencies;
-
-static _SHARED_COMPILER_FLAGS: [&str; 1] = [""];
-
-static SHARED_LINKER_ARGS: [&str; 11] = [
-    "-Wl,-gc-sections,--print-memory-usage",
-    // match the Rust target's hard-float ABI so gcc picks the right multilib
-    "-mcpu=cortex-m7",
-    "-mthumb",
-    "-mfpu=fpv5-d16",
-    "-mfloat-abi=hard",
-    // don't pull in gcc's crt0.o (it's what references __libc_init_array)
-    "-nostartfiles",
-    "--specs=nano.specs",
-    // libraries
-    "-lc",
-    "-lm",
-    "-lgcc",
-    // aura
-    "-static",
-];
-
-fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>, src_path: &PathBuf) {
+pub fn build_stmh7_lib(
+    hal_path: &PathBuf,
+    hal_srcs: Vec<&str>,
+    src_path: &PathBuf,
+    bin_name: String,
+) {
     // modify main.c
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let modified_main_path = out_dir.join("modified_main.c");
+    // per-binary dir: cc names objects <hash of source dir>-<stem>.o, so shared sources (HAL,
+    // startup, modified_main.c) would otherwise overwrite each other across binaries
+    let obj_dir = out_dir.join(&bin_name);
+    fs::create_dir_all(&obj_dir).expect("Failed to create object dir");
+    let modified_main_path = obj_dir.join("modified_main.c");
     let mut main_c_content =
-        fs::read_to_string("./src/cubemx/Src/main.c").expect("Failed to read main.c");
+        fs::read_to_string(src_path.join("cubemx/Src/main.c")).expect("Failed to read main.c");
     main_c_content = main_c_content.replace("int main(void)", "void cube_setup(void)");
     main_c_content = main_c_content.replace("while (1)", "while (0)");
     fs::write(&modified_main_path, main_c_content).expect("Failed to write modified_main.c");
@@ -43,14 +27,14 @@ fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>, src_path: &PathBuf) {
         hal_path.join("Drivers/CMSIS/Device/ST/STM32H7xx/Include"),
         hal_path.join("Drivers/CMSIS/Include"),
         src_path.join("cubemx/Inc"),
-        PathBuf::from("../../third_party/freertos_config"),
+        PathBuf::from("../third_party/freertos_config"),
     ];
     let stm32_hal_defines: [(&str, Option<&str>); 2] =
         [("USE_HAL_DRIVER", None), ("STM32H733xx", None)];
 
     // build C library from stm32cubemx library (this should be a shared function)
     let mut builder = cc::Build::new();
-    builder.compiler("arm-none-eabi-gcc");
+    builder.compiler("arm-none-eabi-gcc").out_dir(&obj_dir);
     for (a, b) in &stm32_hal_defines {
         // defines
         builder.define(*a, *b);
@@ -86,7 +70,12 @@ fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>, src_path: &PathBuf) {
             .join("Drivers/CMSIS/Device/ST/STM32H7xx/Source/Templates/gcc/startup_stm32h733xx.s"),
     );
 
-    builder.compile("gte7_VC_stm32cube");
+    // VERY IMPORTANT, MAKE SURE YOU ARE LINKING ONLY TO THE BINARIES YOU CARE ABOUT
+    let objs = builder.flag("-ffunction-sections").compile_intermediates(); // Vec<PathBuf>, no archive, no cargo metadata
+    for obj in &objs {
+        println!("cargo:rustc-link-arg-bin={}={}", bin_name, obj.display());
+        println!("cargo:rerun-if-changed={}", obj.display());
+    }
 
     // bindgen uses libclang, which doesn't know where the ARM toolchain's newlib headers
     // (math.h, stdint.h, ...) live, so borrow the sysroot from arm-none-eabi-gcc
@@ -99,7 +88,7 @@ fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>, src_path: &PathBuf) {
         .trim()
         .to_string();
 
-    let wrapper_header = PathBuf::from("./src/wrapper.h")
+    let wrapper_header = PathBuf::from(src_path.join("wrapper.h"))
         .into_os_string()
         .into_string()
         .unwrap();
@@ -128,68 +117,11 @@ fn build_stm_lib(hal_path: &PathBuf, hal_srcs: Vec<&str>, src_path: &PathBuf) {
         .generate()
         .expect("Unable to generate bindings");
 
-    // Write the bindings to the $OUT_DIR/bindings.rs file
-    let out_path = PathBuf::from("./src");
+    // Write the bindings to $OUT_DIR/<bin_name>_bindings.rs, include with
+    // include!(concat!(env!("OUT_DIR"), "/<bin_name>_bindings.rs"))
     bindings
-        .write_to_file(out_path.join("bindings.rs"))
+        .write_to_file(out_dir.join(format!("{bin_name}_bindings.rs")))
         .expect("Couldn't write bindings!");
 
-    println!("cargo::rustc-link-arg=-Wl,--undefined=Reset_Handler"); // nothing (linkerscript??) references the startup code, so force ld to pull it out of libstm32cube.a 
-}
-
-fn main() {
-    let d = pull_h7_dependencies();
-    // println!("{:?}", d);
-
-    build_stm_lib(
-        &d,
-        vec![
-            "stm32h7xx_ll_usb.c",
-            "stm32h7xx_ll_fmc.c",
-            "stm32h7xx_ll_sdmmc.c",
-            "stm32h7xx_ll_delayblock.c",
-            "stm32h7xx_hal_adc_ex.c",
-            "stm32h7xx_hal_adc.c",
-            "stm32h7xx_hal.c",
-            "stm32h7xx_hal_rcc.c",
-            "stm32h7xx_hal_rcc_ex.c",
-            "stm32h7xx_hal_pwr_ex.c",
-            "stm32h7xx_hal_cortex.c",
-            "stm32h7xx_hal_fmac.c",
-            "stm32h7xx_hal_cordic.c",
-            "stm32h7xx_hal_dma_ex.c",
-            "stm32h7xx_hal_dma.c",
-            "stm32h7xx_hal_exti.c",
-            "stm32h7xx_hal_fdcan.c",
-            "stm32h7xx_hal_gpio.c",
-            "stm32h7xx_hal_i2c.c",
-            "stm32h7xx_hal_i2c_ex.c",
-            "stm32h7xx_hal_pcd.c",
-            "stm32h7xx_hal_pcd_ex.c",
-            "stm32h7xx_hal_spi.c",
-            "stm32h7xx_hal_tim.c",
-            "stm32h7xx_hal_tim_ex.c",
-            "stm32h7xx_hal_uart.c",
-            "stm32h7xx_hal_uart_ex.c",
-            "stm32h7xx_ll_usb.c",
-            "stm32h7xx_hal_spi.c",
-            "stm32h7xx_hal_tim_ex.c",
-            "stm32h7xx_hal_gpio.c",
-            "stm32h7xx_hal_iwdg.c",
-        ],
-        &PathBuf::from("./src"),
-    );
-
-    let linker_paths: LinkerPaths = h7_linker_paths();
-
-    println!(
-        "cargo::rustc-link-arg=-Wl,-T,{}",
-        &linker_paths.app_linker_script.display()
-    );
-    // shared linker args
-    for arg in SHARED_LINKER_ARGS {
-        println!("cargo::rustc-link-arg={arg}");
-    }
-    println!("cargo::rustc-link-search={}", linker_path().display());
-    println!("cargo::rustc-link-arg=-Wl,--fatal-warnings");
+    println!("cargo::rustc-link-arg-bin={bin_name}=-Wl,--undefined=Reset_Handler"); // nothing (linkerscript??) references the startup code, so force ld to pull it out of libstm32cube.a 
 }

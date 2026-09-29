@@ -11,7 +11,7 @@ fn panic(_info: &PanicInfo) -> ! {
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 pub mod stm32_bindings {
-    include!("bindings.rs");
+    include!(concat!(env!("OUT_DIR"), "/gte7_VC_app_bindings.rs"));
 }
 
 use stm32_bindings::cube_setup;
